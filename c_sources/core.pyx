@@ -16,7 +16,7 @@ except ImportError:
     from time import clock
 from cython.parallel import parallel, prange, threadid
 from libc.stdlib cimport malloc, realloc, free, rand, srand, abs
-from libc.math cimport fabs
+from libc.math cimport fabs, sqrtf
 
 
 cdef extern from *:
