@@ -16,6 +16,7 @@ except ImportError:
     from time import clock
 from cython.parallel import parallel, prange, threadid
 from libc.stdlib cimport malloc, realloc, free, rand, srand, abs
+from libc.math cimport fabs
 
 
 cdef extern from *:
@@ -31,6 +32,11 @@ cdef extern from "stdlib.h":
         int size,
         int(*compar)(const_void *, const_void *)
     )noexcept nogil
+
+cdef extern from "math_utils.h":
+    float dot_product(float u[3],float v[3])noexcept nogil
+    float square_dist(float p1[3], float p2[3])noexcept nogil
+    int arraysearch(int element, int *array, int len)noexcept nogil
 
 
 cdef float fps = 0
@@ -664,9 +670,9 @@ cdef void collide(Particle *par)noexcept nogil:
                 lenghtx = par.loc[0] - par2.loc[0]
                 lenghty = par.loc[1] - par2.loc[1]
                 lenghtz = par.loc[2] - par2.loc[2]
-                sqlenght  = square_dist(par.loc, par2.loc, 3)
+                sqlenght  = square_dist(par.loc, par2.loc)
                 if sqlenght != 0 and sqlenght < sqtarget:
-                    lenght = sqlenght ** 0.5
+                    lenght = sqrtf(sqlenght)
                     invlenght = 1 / lenght
                     factor = (lenght - target) * invlenght
                     ratio1 = (par2.mass / (par.mass + par2.mass))
@@ -1187,7 +1193,7 @@ cdef void KDTree_rnn_search(
     axis = kdtree.axis[depth]
 
     if (fabs(point[axis] - tparticle.loc[axis])) <= dist:
-        realsqdist = square_dist(point, tparticle.loc, 3)
+        realsqdist = square_dist(point, tparticle.loc)
 
         if realsqdist <= sqdist:
 
@@ -1328,7 +1334,7 @@ cdef void create_link(int par_id, int max_link, int parothers_id=-1)noexcept nog
                         srand(1)
                         tension = ((par.sys.link_tension + par2.sys.link_tension)/2) * ((((rand() / rand_max) * tensionrandom) - (tensionrandom / 2)) + 1)
                         srand(2)
-                        link.lenght = ((square_dist(par.loc,par2.loc,3))**0.5) * tension
+                        link.lenght = ((sqrtf(square_dist(par.loc,par2.loc)))) * tension
                         stiffrandom = (par.sys.link_stiffrand + par2.sys.link_stiffrand) / 2 * 2
                         link.stiffness = ((par.sys.link_stiff + par2.sys.link_stiff)/2) * ((((rand() / rand_max) * stiffrandom) - (stiffrandom / 2)) + 1)
                         srand(3)
@@ -1374,7 +1380,7 @@ cdef void create_link(int par_id, int max_link, int parothers_id=-1)noexcept nog
                         srand(10)
                         tension = ((par.sys.relink_tension + par2.sys.relink_tension)/2) * ((((rand() / rand_max) * tensionrandom) - (tensionrandom / 2)) + 1)
                         srand(11)
-                        link.lenght = ((square_dist(par.loc,par2.loc,3))**0.5) * tension
+                        link.lenght = ((sqrtf(square_dist(par.loc,par2.loc)))) * tension
                         stiffrandom = (par.sys.relink_stiffrand + par2.sys.relink_stiffrand) / 2 * 2
                         link.stiffness = ((par.sys.relink_stiff + par2.sys.relink_stiff)/2) * ((((rand() / rand_max) * stiffrandom) - (stiffrandom / 2)) + 1)
                         srand(12)
@@ -1545,35 +1551,6 @@ cdef struct Heap:
     int *par
     int parnum
     int maxalloc
-
-
-cdef int arraysearch(int element, int *array, int len)noexcept nogil:
-    cdef int i = 0
-    for i in range(len):
-        if element == array[i]:
-            return i
-    return -1
-
-
-cdef float fabs(float value)noexcept nogil:
-    if value >= 0:
-        return value
-    if value < 0:
-        return -value
-
-
-#@cython.cdivision(True)
-cdef float square_dist(float point1[3], float point2[3], int k)noexcept nogil:
-    cdef float sq_dist = 0
-    for i in range(k):
-        sq_dist += (point1[i] - point2[i]) * (point1[i] - point2[i])
-    return sq_dist
-
-
-cdef float dot_product(float u[3],float v[3])noexcept nogil:
-    cdef float dot = 0
-    dot = (u[0] * v[0]) + (u[1] * v[1]) + (u[2] * v[2])
-    return dot
 
 
 cdef void quick_sort(SParticle *a, int n, int axis)noexcept nogil:
