@@ -5,6 +5,9 @@ import math
 from mathutils import Vector
 from mathutils.geometry import barycentric_transform as barycentric
 from time import sleep, strftime, gmtime, time
+import cProfile, pstats, io
+from pstats import SortKey
+pr = cProfile.Profile()
 
 from . import simulate, core
 from .utils import get_object, destroy_caches, update_progress
@@ -53,7 +56,6 @@ class MolSimulate(bpy.types.Operator):
                 )
 
     def execute(self, context):
-
         scene = context.scene
         if not self.resume:
             for ob in bpy.data.objects:
@@ -311,6 +313,11 @@ class MolSimulateModal(bpy.types.Operator):
 
         ###### ESC END #######
         if event.type == 'ESC' or frame_current == frame_end or scene.mol_cancel:
+            s = io.StringIO()
+            sortby = SortKey.CUMULATIVE
+            ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+            ps.print_stats()
+            print(s.getvalue())
             if frame_current == frame_end and scene.mol_bake:
                 bpy.ops.object.bake_sim()
 
@@ -333,7 +340,7 @@ class MolSimulateModal(bpy.types.Operator):
 
         ###### TIMER #######
         if event.type == 'TIMER':
-
+            pr.enable()
             mol_substep = scene.mol_substep
             framesubstep = frame_current / (mol_substep + 1)
 
@@ -370,7 +377,8 @@ class MolSimulateModal(bpy.types.Operator):
             scene.mol_totallink = mol_importdata[4]
             scene.mol_totaldeadlink = mol_importdata[5]
             scene.frame_set(frame=frame_current + 1)
-
+            pr.disable()
+        
             if framesubstep == int(framesubstep):
                 print("    frame " + str(int(framesubstep) + 1) + ":")
                 print("      links created:", scene.mol_newlink)

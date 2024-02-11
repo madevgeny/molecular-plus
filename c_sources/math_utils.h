@@ -1,5 +1,5 @@
-#ifndef MATH_UTILS_H
-#define MATH_UTILS_H
+#ifndef MOLECULAR_MATH_UTILS_H
+#define MOLECULAR_MATH_UTILS_H
 
 #include <math.h>
 

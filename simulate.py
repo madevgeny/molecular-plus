@@ -6,7 +6,7 @@ from .utils import get_object
 def get_weak_map(obj, psys):
     print('start bake weakmap from:', obj.name)
 
-    par_weak = array.array('f',[0]) * len(psys.particles)
+    par_weak = np.empty(len(psys.particles), dtype=np.float32)
     tex = psys.settings.texture_slots[0].texture
     texm_offset = psys.settings.texture_slots[0].offset
     texm_scale = psys.settings.texture_slots[0].scale
@@ -35,11 +35,9 @@ def pack_data(context, initiate):
             parlen = len(psys.particles)
 
             if psys.settings.mol_active and parlen:
-
-                par_loc = array.array('f', [0, 0, 0]) * parlen
-                par_vel = array.array('f', [0, 0, 0]) * parlen
-                par_size = array.array('f', [0]) * parlen
-                par_alive = array.array('h', [0]) * parlen
+                par_loc = np.empty(parlen * 3, dtype=np.float32)
+                par_vel = np.empty(parlen * 3, dtype=np.float32)
+                par_alive = np.empty(parlen, dtype=np.int16)
 
                 parnum += parlen
 
@@ -48,7 +46,7 @@ def pack_data(context, initiate):
                 psys.particles.foreach_get('alive_state', par_alive)
 
                 if initiate:
-                    par_mass = array.array('f',[0]) * parlen
+                    par_size = np.empty(parlen, dtype=np.float32)
                     psys.particles.foreach_get('size', par_size)
 
                     if psys.settings.mol_bake_weak_map:
@@ -57,11 +55,8 @@ def pack_data(context, initiate):
                         par_weak = array.array('f',[1.0]) * parlen
 
                     if psys.settings.mol_density_active:
-                        par_mass_np = np.asarray(par_mass)
-                        par_size_np = np.asarray(par_size)
-                        par_mass_np[:] = psys.settings.mol_density * (
-                                    4 / 3 * 3.141592653589793 * ((par_size_np / 2) ** 3))
-                        par_mass = par_mass_np
+                        par_mass = psys.settings.mol_density * (
+                                    4 / 3 * 3.141592653589793 * ((par_size / 2) ** 3))
 
                     else:
                         par_mass = array.array('f',[psys.settings.mass]) * parlen

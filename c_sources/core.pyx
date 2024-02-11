@@ -5,6 +5,8 @@
 #cython: language_level=3
 #cython: cpow=True
 
+# distutils: language = c++
+
 # NOTE: order of slow fonction to be optimize/multithreaded:
 # kdtreesearching, kdtreecreating, linksolving
 
@@ -18,25 +20,38 @@ from cython.parallel import parallel, prange, threadid
 from libc.stdlib cimport malloc, realloc, free, rand, srand, abs
 from libc.math cimport fabs, sqrtf
 
+cdef extern from "<vector>" namespace "std":
+    cdef cppclass vector[T]:
+        cppclass iterator:
+            T operator*()nogil
+            iterator operator++()nogil
+            bint operator==(iterator)nogil
+            bint operator!=(iterator)nogil
+        vector()nogil
+        void push_back(T&)nogil
+        size_t size()nogil
+        void clear()nogil
+        T* data()nogil
+        T& operator[](int)nogil
+        T& at(int)nogil
+        iterator begin()nogil
+        iterator end()nogil
+
 
 cdef extern from *:
     int INT_MAX
     float FLT_MAX
 
 
-cdef extern from "stdlib.h":
-    ctypedef void const_void "const void"
-    void qsort(
-        void *base,
-        int nmemb,
-        int size,
-        int(*compar)(const_void *, const_void *)
-    )noexcept nogil
-
 cdef extern from "math_utils.h":
     float dot_product(float u[3],float v[3])noexcept nogil
     float square_dist(float p1[3], float p2[3])noexcept nogil
     int arraysearch(int element, int *array, int len)noexcept nogil
+
+cdef extern from "structs.h":
+    cdef struct SParticle:
+        int id
+        float loc[3]
 
 
 cdef float fps = 0
@@ -163,9 +178,7 @@ cpdef init(importdata):
             parlist[jj].links_activnum = 0
             parlist[jj].link_with = <int *>malloc(1 * cython.sizeof(int))
             parlist[jj].link_withnum = 0
-            parlist[jj].neighboursmax = 10
-            parlist[jj].neighbours = <int *>malloc(parlist[jj].neighboursmax * cython.sizeof(int))
-            parlist[jj].neighboursnum = 0
+           
             jj += 1
 
     jj = 0
@@ -218,9 +231,7 @@ cpdef init(importdata):
 
     for i in range(parnum):
         create_link(parlist[i].id, parlist[i].sys.link_max)
-        if parlist[i].neighboursnum > 1:
-            # free(parlist[i].neighbours)
-            parlist[i].neighboursnum = 0
+        parlist[i].neighbours.clear()
     totallinks += newlinks
     print("  New links created: ", newlinks)
     return parnum
@@ -425,15 +436,10 @@ cpdef simulate(importdata):
                         &parlist[parPool[0].parity[pair].heap[heaps].par[i]]
                     )
 
-                    if parlist[
+                    parlist[
                         parPool[0].parity[pair].heap[heaps].par[i]
-                    ].neighboursnum > 1:
+                    ].neighbours.clear()
 
-                        # free(parlist[i].neighbours)
-
-                        parlist[
-                            parPool[0].parity[pair].heap[heaps].par[i]
-                        ].neighboursnum = 0
 
     if profiling == 1:
         print("-->collide/solve link time", clock() - stime, "sec")
@@ -473,14 +479,6 @@ cpdef simulate(importdata):
         totaldeadlinks
     ]
 
-    for pair in range(2):
-        for heaps in range(<int>(parPool[0].max * scale) + 1):
-            parPool[0].parity[pair].heap[heaps].parnum = 0
-            free(parPool[0].parity[pair].heap[heaps].par)
-        free(parPool[0].parity[pair].heap)
-    free(parPool[0].parity)
-    free(parPool)
-
     if profiling == 1:
         print("-->export time", clock() - stime, "sec")
         print("-->all process time", clock() - stime2, "sec")
@@ -510,28 +508,21 @@ cpdef memfree():
     deadlinks = NULL
 
     for i in range(parnum):
-        if parnum >= 1:
-            if parlist[i].neighboursnum >= 1:
-                free(parlist[i].neighbours)
-                parlist[i].neighbours = NULL
-                parlist[i].neighboursnum = 0
-            if parlist[i].collided_num >= 1:
-                free(parlist[i].collided_with)
-                parlist[i].collided_with = NULL
-                parlist[i].collided_num = 0
-            if parlist[i].links_num >= 1:
-                free(parlist[i].links)
-                parlist[i].links = NULL
-                parlist[i].links_num = 0
-                parlist[i].links_activnum = 0
-            if parlist[i].link_withnum >= 1:
-                free(parlist[i].link_with)
-                parlist[i].link_with = NULL
-                parlist[i].link_withnum = 0
-            if parlist[i].neighboursnum >= 1:
-                free(parlist[i].neighbours)
-                parlist[i].neighbours = NULL
-                parlist[i].neighboursnum = 0
+        if parlist[i].collided_num >= 1:
+            free(parlist[i].collided_with)
+            parlist[i].collided_with = NULL
+            parlist[i].collided_num = 0
+        if parlist[i].links_num >= 1:
+            free(parlist[i].links)
+            parlist[i].links = NULL
+            parlist[i].links_num = 0
+            parlist[i].links_activnum = 0
+        if parlist[i].link_withnum >= 1:
+            free(parlist[i].link_with)
+            parlist[i].link_with = NULL
+            parlist[i].link_withnum = 0
+            
+        parlist[i].neighbours.clear()
 
     for i in range(psysnum):
         if psysnum >= 1:
@@ -585,7 +576,6 @@ cdef void collide(Particle *par)noexcept nogil:
     global kdtree
     global deltatime
     global deadlinks
-    cdef int *neighbours = NULL
     cdef Particle *par2 = NULL
     cdef float stiff = 0
     cdef float target = 0
@@ -629,14 +619,12 @@ cdef void collide(Particle *par)noexcept nogil:
     if par.sys.selfcollision_active == False and par.sys.othercollision_active == False:
         return
 
-    neighbours = par.neighbours
-
     # for i in range(kdtree.num_result):
-    for i in range(par.neighboursnum):
+    for i in range(par.neighbours.size()):
         check = 0
         if parlist[i].id == -1:
             check += 1
-        par2 = &parlist[neighbours[i]]
+        par2 = &parlist[par.neighbours[i]]
         if par.id == par2.id:
             check += 10
         if arraysearch(par2.id, par.collided_with, par.collided_num) == -1:
@@ -986,8 +974,7 @@ cdef void update(data):
                         psys[i].particles[ii].sys.link_length
                     )
                     create_link(psys[i].particles[ii].id, psys[i].link_max)
-                    # free(psys[i].particles[ii].neighbours)
-                    psys[i].particles[ii].neighboursnum = 0
+                    psys[i].particles[ii].neighbours.clear()
 
             elif psys[i].particles[ii].state == 4 and data[i][2][ii] == 3:
                 psys[i].particles[ii].state = 4
@@ -1150,12 +1137,10 @@ cdef void KDTree_rnn_query(
     cdef float sqdist  = 0
     cdef int k  = 0
     cdef int i = 0
-    par.neighboursnum = 0
-    par.neighbours[0] = -1
+    par.neighbours.clear()
 
     if kdtree.root_node[0].index != kdtree.nodes[0].index:
-        par.neighbours[0] = -1
-        par.neighboursnum = 0
+        par.neighbours.clear()
         return
     else:
         sqdist = dist * dist
@@ -1196,15 +1181,7 @@ cdef void KDTree_rnn_search(
         realsqdist = square_dist(point, tparticle.loc)
 
         if realsqdist <= sqdist:
-
-            par.neighbours[par.neighboursnum] = node.particle[0].id
-            par.neighboursnum += 1
-            if (par.neighboursnum) >= par.neighboursmax:
-                par.neighboursmax = par.neighboursmax * 2
-                par.neighbours = <int *>realloc(
-                    par.neighbours,
-                    (par.neighboursmax) * cython.sizeof(int)
-                )
+            par.neighbours.push_back(node.particle[0].id)
 
         KDTree_rnn_search(
             kdtree,
@@ -1289,8 +1266,8 @@ cdef void create_link(int par_id, int max_link, int parothers_id=-1)noexcept nog
     if parothers_id == -1:
         # KDTree_rnn_query(kdtree, &fakepar[0], par.loc, par.sys.link_length)
         # neighbours = fakepar[0].neighbours
-        neighbours = par.neighbours
-        neighboursnum = par.neighboursnum
+        neighbours = par.neighbours.data()
+        neighboursnum = par.neighbours.size()
     else:
         neighbours = <int *>malloc(1 * cython.sizeof(int))
         neighbours[0] = parothers_id
@@ -1509,11 +1486,6 @@ cdef struct ParSys:
     int other_link_active
 
 
-cdef struct SParticle:
-    int id
-    float loc[3]
-
-
 cdef struct Particle:
     int id
     float loc[3]
@@ -1531,9 +1503,7 @@ cdef struct Particle:
     int links_activnum
     int *link_with
     int link_withnum
-    int *neighbours
-    int neighboursnum
-    int neighboursmax
+    vector[int] neighbours
 
 
 cdef struct Pool:
