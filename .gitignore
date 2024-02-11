@@ -3,11 +3,16 @@ __pycache__/*
 
 core.cython*.so
 c_sources/core.c
+c_sources/core.cpp
 c_sources/core.html
 c_sources/.DS_Store
 *.pyc
+*.lib
+*.exp
+*.obj
 *.so
 *.zip
+*.pyd
 
 c_sources/openmp/openmp-13.0.1.src/www/Reference.pdf
 c_sources/openmp/openmp-13.0.1.src/www/README.txt
