@@ -47,6 +47,7 @@ cdef extern from "math_utils.h":
     float dot_product(float u[3],float v[3])noexcept nogil
     float square_dist(float p1[3], float p2[3])noexcept nogil
     int arraysearch(int element, int *array, int len)noexcept nogil
+    void quick_sort(SParticle *a, int n, int axis)noexcept nogil
 
 cdef extern from "structs.h":
     cdef struct SParticle:
@@ -1522,32 +1523,3 @@ cdef struct Heap:
     int parnum
     int maxalloc
 
-
-cdef void quick_sort(SParticle *a, int n, int axis)noexcept nogil:
-    if (n < 2):
-        return
-    cdef SParticle t
-    cdef float p = a[n / 2].loc[axis]
-    cdef SParticle *l = a
-    cdef SParticle *r = a + n - 1
-    while l <= r:
-        if l[0].loc[axis] < p:
-            l += 1
-            continue
-
-        if r[0].loc[axis] > p:
-            r -= 1
-            # // we need to check the condition (l <= r) every time
-            #  we change the value of l or r
-            continue
-
-        t = l[0]
-        l[0] = r[0]
-        # suggested by stephan to remove temp variable t but slower
-        # l[0], r[0] = r[0], l[0]
-        l += 1
-        r[0] = t
-        r -= 1
-
-    quick_sort(a, r - a + 1, axis)
-    quick_sort(l, a + n - l, axis)
