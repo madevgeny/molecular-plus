@@ -54,6 +54,46 @@ cdef extern from "structs.h":
         int id
         float loc[3]
 
+    cdef struct Links:
+        float lenght
+        int start
+        int end
+        float stiffness
+        int exponent
+        float damping
+        float broken
+        float estiffness
+        int eexponent
+        float edamping
+        float ebroken
+        float friction
+
+
+    cdef struct KDTree:
+        int numnodes
+        # int num_result
+        # int *result
+        Node *root_node
+        Node *nodes
+        char axis[64]
+        int thread_index
+        int *thread_nodes
+        int *thread_start
+        int *thread_end
+        int *thread_name
+        int *thread_parent
+        int *thread_depth
+
+    
+    cdef struct Node:
+        int index
+        char name
+        int parent
+        float loc[3]
+        SParticle *particle
+        Node *left_child
+        Node *right_child
+    
 
 cdef float fps = 0
 cdef int substep = 0
@@ -1391,47 +1431,6 @@ cdef void create_link(int par_id, int max_link, int parothers_id=-1)noexcept nog
     free(link)
     # free(par)
     # free(par2)
-
-
-cdef struct Links:
-    float lenght
-    int start
-    int end
-    float stiffness
-    int exponent
-    float damping
-    float broken
-    float estiffness
-    int eexponent
-    float edamping
-    float ebroken
-    float friction
-
-
-cdef struct KDTree:
-    int numnodes
-    # int num_result
-    # int *result
-    Node *root_node
-    Node *nodes
-    char axis[64]
-    int thread_index
-    int *thread_nodes
-    int *thread_start
-    int *thread_end
-    int *thread_name
-    int *thread_parent
-    int *thread_depth
-
-
-cdef struct Node:
-    int index
-    char name
-    int parent
-    float loc[3]
-    SParticle *particle
-    Node *left_child
-    Node *right_child
 
 
 cdef struct ParSys:
