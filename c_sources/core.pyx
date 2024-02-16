@@ -30,6 +30,7 @@ cdef extern from "<vector>" namespace "std":
         vector()nogil
         void push_back(T&)nogil
         size_t size()nogil
+        void reserve(size_t n)nogil
         void clear()nogil
         T* data()nogil
         T& operator[](int)nogil
@@ -129,10 +130,9 @@ cdef extern from "structs.h":
         float mass
         int state
         float weak
-    
+
         ParSys *sys
-        int *collided_with
-        int collided_num
+        vector[int] collided_with
         Links *links
         int links_num
         int links_activnum
@@ -284,8 +284,8 @@ cpdef init(importdata):
             parlist[jj].state = importdata[i + 1][5][ii]
             parlist[jj].weak = importdata[i + 1][7][ii]
             parlist[jj].sys = &psys[i]
-            parlist[jj].collided_with = <int *>malloc(1 * cython.sizeof(int))
-            parlist[jj].collided_num = 0
+            parlist[jj].collided_with.reserve(16)
+            parlist[jj].neighbours.reserve(128)
             parlist[jj].links = <Links *>malloc(1 * cython.sizeof(Links))
             parlist[jj].links_num = 0
             parlist[jj].links_activnum = 0
@@ -621,10 +621,6 @@ cpdef memfree():
     deadlinks = NULL
 
     for i in range(parnum):
-        if parlist[i].collided_num >= 1:
-            free(parlist[i].collided_with)
-            parlist[i].collided_with = NULL
-            parlist[i].collided_num = 0
         if parlist[i].links_num >= 1:
             free(parlist[i].links)
             parlist[i].links = NULL
@@ -635,6 +631,7 @@ cpdef memfree():
             parlist[i].link_with = NULL
             parlist[i].link_withnum = 0
             
+        parlist[i].collided_with.clear()
         parlist[i].neighbours.clear()
 
     for i in range(psysnum):
@@ -740,7 +737,7 @@ cdef void collide(Particle *par)noexcept nogil:
         par2 = &parlist[par.neighbours[i]]
         if par.id == par2.id:
             check += 10
-        if arraysearch(par2.id, par.collided_with, par.collided_num) == -1:
+        if arraysearch(par2.id, par.collided_with.data(), par.collided_with.size()) == -1:
         # if par2 not in par.collided_with:
             if par2.sys.id != par.sys.id :
                 if par2.sys.othercollision_active == False or \
@@ -854,12 +851,7 @@ cdef void collide(Particle *par)noexcept nogil:
                         (1 - damping2))) + ((xi_vel[2] * friction2) + \
                         ( xpar_vel[2] * ( 1 - friction2)))
 
-                    par2.collided_with[par2.collided_num] = par.id
-                    par2.collided_num += 1
-                    par2.collided_with = <int *>realloc(
-                        par2.collided_with,
-                        (par2.collided_num + 1) * cython.sizeof(int)
-                    )
+                    par2.collided_with.push_back(par.id)
 
                     if ((par.sys.relink_chance + par2.sys.relink_chance) / 2) \
                             > 0:
@@ -1095,12 +1087,7 @@ cdef void update(data):
             else:
                 psys[i].particles[ii].state = data[i][2][ii]
 
-            psys[i].particles[ii].collided_with = <int *>realloc(
-                psys[i].particles[ii].collided_with,
-                1 * cython.sizeof(int)
-            )
-            psys[i].particles[ii].collided_num = 0
-
+            psys[i].particles[ii].collided_with.clear()
 
 
 cdef void KDTree_create_nodes(KDTree *kdtree,int parnum)noexcept nogil:

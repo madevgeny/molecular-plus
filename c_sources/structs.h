@@ -84,15 +84,13 @@ struct Particle{
     float weak = 0;
 
     ParSys *sys = nullptr;
-    int *collided_with = nullptr;
-    int collided_num = 0;
+    std::vector<int> collided_with;
     Links *links = nullptr;
     int links_num = 0;
     int links_activnum = 0;
     int *link_with = nullptr;
     int link_withnum = 0;
     std::vector<int> neighbours;
-
 };
 
 struct SParticle{
