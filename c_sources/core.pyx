@@ -68,6 +68,78 @@ cdef extern from "structs.h":
         float ebroken
         float friction
 
+    cdef struct ParSys:
+        int id
+        int parnum
+        Particle *particles
+        int selfcollision_active
+        int othercollision_active
+        int collision_group
+        float friction
+        float collision_damp
+        int links_active
+        float link_length
+        int link_max
+        float link_tension
+        float link_tensionrand
+        float link_stiff
+        float link_stiffrand
+        float link_stiffexp
+        float link_damp
+        float link_damprand
+        float link_broken
+        float link_brokenrand
+        float link_estiff
+        float link_estiffrand
+        float link_estiffexp
+        float link_edamp
+        float link_edamprand
+        float link_ebroken
+        float link_ebrokenrand
+        int relink_group
+        float relink_chance
+        float relink_chancerand
+        int relink_max
+        float relink_tension
+        float relink_tensionrand
+        float relink_stiff
+        float relink_stiffexp
+        float relink_stiffrand
+        float relink_damp
+        float relink_damprand
+        float relink_broken
+        float relink_brokenrand
+        float relink_estiff
+        float relink_estiffexp
+        float relink_estiffrand
+        float relink_edamp
+        float relink_edamprand
+        float relink_ebroken
+        float relink_ebrokenrand
+        float link_friction
+        int link_group
+        int other_link_active
+
+
+    cdef struct Particle:
+        int id
+        float loc[3]
+        float vel[3]
+        float size
+        float mass
+        int state
+        float weak
+    
+        ParSys *sys
+        int *collided_with
+        int collided_num
+        Links *links
+        int links_num
+        int links_activnum
+        int *link_with
+        int link_withnum
+        vector[int] neighbours
+
 
     cdef struct KDTree:
         int numnodes
@@ -84,7 +156,7 @@ cdef extern from "structs.h":
         int *thread_parent
         int *thread_depth
 
-    
+
     cdef struct Node:
         int index
         char name
@@ -93,7 +165,7 @@ cdef extern from "structs.h":
         SParticle *particle
         Node *left_child
         Node *right_child
-    
+
 
 cdef float fps = 0
 cdef int substep = 0
@@ -1031,7 +1103,7 @@ cdef void update(data):
 
 
 
-cdef void KDTree_create_nodes(KDTree *kdtree,int parnum):#noexcept nogil:
+cdef void KDTree_create_nodes(KDTree *kdtree,int parnum)noexcept nogil:
     cdef int i = 0
     i = 2
     while i < parnum:
@@ -1431,79 +1503,6 @@ cdef void create_link(int par_id, int max_link, int parothers_id=-1)noexcept nog
     free(link)
     # free(par)
     # free(par2)
-
-
-cdef struct ParSys:
-    int id
-    int parnum
-    Particle *particles
-    int selfcollision_active
-    int othercollision_active
-    int collision_group
-    float friction
-    float collision_damp
-    int links_active
-    float link_length
-    int link_max
-    float link_tension
-    float link_tensionrand
-    float link_stiff
-    float link_stiffrand
-    float link_stiffexp
-    float link_damp
-    float link_damprand
-    float link_broken
-    float link_brokenrand
-    float link_estiff
-    float link_estiffrand
-    float link_estiffexp
-    float link_edamp
-    float link_edamprand
-    float link_ebroken
-    float link_ebrokenrand
-    int relink_group
-    float relink_chance
-    float relink_chancerand
-    int relink_max
-    float relink_tension
-    float relink_tensionrand
-    float relink_stiff
-    float relink_stiffexp
-    float relink_stiffrand
-    float relink_damp
-    float relink_damprand
-    float relink_broken
-    float relink_brokenrand
-    float relink_estiff
-    float relink_estiffexp
-    float relink_estiffrand
-    float relink_edamp
-    float relink_edamprand
-    float relink_ebroken
-    float relink_ebrokenrand
-    float link_friction
-    int link_group
-    int other_link_active
-
-
-cdef struct Particle:
-    int id
-    float loc[3]
-    float vel[3]
-    float size
-    float mass
-    int state
-    float weak
-
-    ParSys *sys
-    int *collided_with
-    int collided_num
-    Links *links
-    int links_num
-    int links_activnum
-    int *link_with
-    int link_withnum
-    vector[int] neighbours
 
 
 cdef struct Pool:
