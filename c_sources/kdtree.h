@@ -16,7 +16,6 @@ struct Node{
     Node *right_child = nullptr;
 };
 
-
 struct KDTree{
     int numnodes = 0;
     Node *root_node = nullptr;
@@ -31,5 +30,5 @@ struct KDTree{
     int *thread_depth = nullptr;
 };
 
-
+extern KDTree *kdtree;
 #endif

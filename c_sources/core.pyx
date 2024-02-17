@@ -141,33 +141,8 @@ cdef extern from "structs.h":
         vector[int] neighbours
 
 
-    cdef struct KDTree:
-        int numnodes
-        # int num_result
-        # int *result
-        Node *root_node
-        Node *nodes
-        char axis[64]
-        int thread_index
-        int *thread_nodes
-        int *thread_start
-        int *thread_end
-        int *thread_name
-        int *thread_parent
-        int *thread_depth
-
-
-    cdef struct Node:
-        int index
-        char name
-        int parent
-        float loc[3]
-        SParticle *particle
-        Node *left_child
-        Node *right_child
-
-
 cdef extern from "kdtree.h":
+    cdef KDTree *kdtree
     cdef struct KDTree:
         int numnodes
         # int num_result
@@ -206,7 +181,7 @@ cdef int *deadlinks = NULL
 cdef Particle *parlist = NULL
 cdef SParticle *parlistcopy = NULL
 cdef ParSys *psys = NULL
-cdef KDTree *kdtree = NULL
+
 print("cmolcore imported  v1.14.3")
 
 
