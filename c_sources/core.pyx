@@ -167,6 +167,32 @@ cdef extern from "structs.h":
         Node *right_child
 
 
+cdef extern from "kdtree.h":
+    cdef struct KDTree:
+        int numnodes
+        # int num_result
+        # int *result
+        Node *root_node
+        Node *nodes
+        char axis[64]
+        int thread_index
+        int *thread_nodes
+        int *thread_start
+        int *thread_end
+        int *thread_name
+        int *thread_parent
+        int *thread_depth
+
+    cdef struct Node:
+        int index
+        char name
+        int parent
+        float loc[3]
+        SParticle *particle
+        Node *left_child
+        Node *right_child
+
+
 cdef float fps = 0
 cdef int substep = 0
 cdef float deltatime = 0
@@ -1240,7 +1266,6 @@ cdef void KDTree_rnn_query(
     par.neighbours.clear()
 
     if kdtree.root_node[0].index != kdtree.nodes[0].index:
-        par.neighbours.clear()
         return
     else:
         sqdist = dist * dist
